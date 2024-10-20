@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Loader from './Loader';
+import axios from '../myaxios.js';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -13,24 +14,16 @@ const Login = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL}/api/token/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
+      const response = await axios.post(`${import.meta.env.PUBLIC_API_BASE_URL}/api/token/`, {
+        username,
+        password,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        setError({ message: `Login failed: ${errorData.detail || 'Unknown error'}`, status: response.status });
-      } else {
-        const data = await response.json();
-        localStorage.setItem('accessToken', data.access);
-        localStorage.setItem('refreshToken', data.refresh);
-        // Assuming a successful login redirects to a profile page
-        window.location.href = '/profile';
-      }
+    
+      // Handle successful login
+      localStorage.setItem('accessToken', response.data.access);
+      localStorage.setItem('refreshToken', response.data.refresh);
+      window.location.href = '/profile'; // Redirect to profile page
+    
     } catch (error) {
       setError({ message: 'Error during login', status: 500, error });
     } finally {

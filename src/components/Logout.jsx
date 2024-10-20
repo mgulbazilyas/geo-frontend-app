@@ -1,20 +1,16 @@
 import React from 'react';
-
+import axios from '../myaxios';
 const Logout = () => {
   const handleLogout = async () => {
     try {
       // Retrieve the refresh token from local storage or state management
       const refreshToken = localStorage.getItem('refreshToken');
-
-      const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL}/api/logout/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refresh: refreshToken }),
+  
+      const response = await axios.post(`${import.meta.env.PUBLIC_API_BASE_URL}/api/logout/`, {
+        refresh: refreshToken
       });
-
-      if (response.ok) {
+  
+      if (response.status === 200) {
         // Clear the tokens from local storage or state management
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');

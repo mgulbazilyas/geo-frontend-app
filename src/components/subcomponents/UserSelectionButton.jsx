@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import axios from 'axios';
+import axios from '../../myaxios.js';
 import { FaPencilAlt } from 'react-icons/fa';
 import { ROLES, RESIDENT,
   BUILDING_OWNER,
@@ -44,23 +44,23 @@ export const UserSelectionButton = ({ label, onSelect }) => {
       const url = isEditing
         ? `${import.meta.env.PUBLIC_API_BASE_URL}/api/users/${search.id}/`
         : `${import.meta.env.PUBLIC_API_BASE_URL}/api/users/`;
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify(search),
-      });
-      if (response.ok) {
-        const new_user = await response.json();
-        setUsers((users) => ([...users, new_user]));
-        setShowModal(false);
-        onSelect(new_user);
-
-        // fetchUsers();
-        setSearch({ username: '', first_name: '', last_name: '', email: '', role: '' }  );
-      } else {
-        const errorData = await response.json();
-        alert(`Error saving user: ${errorData.detail || 'Unknown error'}`);
-      }
+        const response = await axios({
+          method,
+          url,
+          headers,
+          data: search,
+        });
+        if (response.status === 200) {
+          const new_user = response.data;
+          setUsers((users) => ([...users, new_user]));
+          setShowModal(false);
+          onSelect(new_user);
+  
+          // fetchUsers();
+          setSearch({ username: '', first_name: '', last_name: '', email: '', role: '' }  );
+        } else {
+          alert(`Error saving user: ${response.data.detail || 'Unknown error'}`);
+        }
     } catch (error) {
       console.log(error);
       alert('Error saving user');

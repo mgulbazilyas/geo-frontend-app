@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../myaxios.js';
 import Loader from './Loader';
 import Modal from './Modal'; // Assuming a Modal component is available
 import UserSelectionButton from './subcomponents/UserSelectionButton.jsx'; // New UserSelection component
@@ -189,4 +189,4 @@ export default Buildings;
 
 // UserSelection Component (in a separate file, e.g., UserSelection.js)
 // import React, { useState, useEffect } from 'react';
-// import axios from 'axios';
+// import axios from '../myaxios.js';

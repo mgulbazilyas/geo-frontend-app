@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import Loader from './Loader';
 import UserSelectionButton from './subcomponents/UserSelectionButton.jsx';
-import axios from 'axios';
+import axios from '../myaxios.js';
 
 const Readings = () => {
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedReading, setSelectedReading] = useState(null);
-
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
     const fetchReadings = async () => {
@@ -21,12 +23,16 @@ const Readings = () => {
           return;
         }
         const headers = { Authorization: `Bearer ${accessToken}` };
-        const response = await axios.get(`${import.meta.env.PUBLIC_API_BASE_URL}/api/readings/`, { headers });
+        const response = await axios.get(`${import.meta.env.PUBLIC_API_BASE_URL}/api/readings/`, {
+          headers,
+          params: { page, search: searchQuery },
+        });
         if (response.status === 200) {
           setReadings(response.data.results);
+          setCount(response.data.count);
         } else {
           setError({ message: 'Error fetching readings', status: response.status });
-          }
+        }
       } catch (error) {
         setError({ message: 'Error fetching readings', status: error?.response?.status || 500, error });
       } finally {
@@ -35,7 +41,12 @@ const Readings = () => {
     };
 
     fetchReadings();
-  }, []);
+  }, [page, searchQuery]);
+
+  const handleSearchChange = (event) => {
+    setPage(1); // Reset to the first page when search query changes
+    setSearchQuery(event.target.value);
+  };
 
   const handleUpdateReading = async () => {
     try {
@@ -61,6 +72,12 @@ const Readings = () => {
         status: error?.response?.status || 500,
         error,
       });
+    }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage > 0 && newPage <= Math.ceil(count / 10)) {
+      setPage(newPage);
     }
   };
 
@@ -90,6 +107,13 @@ const Readings = () => {
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       <h1 className="text-2xl font-bold mb-4">Readings</h1>
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={handleSearchChange}
+        placeholder="Search..."
+        className="mb-4 p-2 border rounded w-full"
+      />
       <table className="w-full mb-4">
         <thead>
           <tr className="bg-gray-100">
@@ -102,9 +126,7 @@ const Readings = () => {
           {readings.map((reading) => (
             <tr key={reading.id} className="border-b hover:bg-gray-50">
               <td className="py-2 px-4">{reading.id}</td>
-              <td className="py-2 px-4">
-                {reading.userName}
-              </td>
+              <td className="py-2 px-4">{reading.userName}</td>
               <td className="py-2 px-4">
                 <button
                   onClick={() => setSelectedReading(reading)}
@@ -118,6 +140,31 @@ const Readings = () => {
         </tbody>
       </table>
 
+      <div className="flex items-center justify-between mt-4">
+        <button
+          onClick={() => handlePageChange(page - 1)}
+          disabled={page === 1}
+          className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded-lg disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <input
+          type="number"
+          value={page}
+          onChange={(e) => handlePageChange(Number(e.target.value))}
+          className="w-16 text-center p-2 border rounded"
+          min="1"
+          max={Math.ceil(count / 10)}
+        />
+        <button
+          onClick={() => handlePageChange(page + 1)}
+          disabled={page === Math.ceil(count / 10)}
+          className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded-lg disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+
       {selectedReading && (
         <div className="mt-6 p-6 bg-gray-100 rounded-lg shadow-md">
           <h2 className="text-xl font-bold mb-4">Reading Details</h2>
@@ -125,10 +172,17 @@ const Readings = () => {
             {/* ... other form fields */}
             <div>
               <label className="block font-semibold">User</label>
-              <UserSelectionButton label={selectedReading.userName} onSelect={(user) => {
-                selectedReading.user = user.id;
-                setSelectedReading((previous_val) => ({...previous_val, user: user.id, userName: user.first_name + ' ' + user.last_name}));
-              }}/>
+              <UserSelectionButton
+                label={selectedReading.userName}
+                onSelect={(user) => {
+                  selectedReading.user = user.id;
+                  setSelectedReading((previous_val) => ({
+                    ...previous_val,
+                    user: user.id,
+                    userName: user.first_name + ' ' + user.last_name,
+                  }));
+                }}
+              />
             </div>
           </form>
           <div className="mt-4 flex space-x-4">
@@ -144,7 +198,6 @@ const Readings = () => {
             >
               Close Details
             </button>
-
           </div>
         </div>
       )}

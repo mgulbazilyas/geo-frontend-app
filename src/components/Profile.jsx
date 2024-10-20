@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Loader from './Loader';
 import { ROLES } from '../constants';
+import axios from '../myaxios.js';
 const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,19 +14,23 @@ const Profile = () => {
       setError(null);
       try {
         const accessToken = localStorage.getItem('accessToken');
-        if (!accessToken) {
-          window.location.href = '/login';
-          return;
-        }
-        const headers = { Authorization: `Bearer ${accessToken}` };
-        const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL}/api/users/me/`, { headers });
-        if (!response.ok) {
-          const errorData = await response.json();
-          setError({ message: `Error fetching profile: ${errorData.detail || 'Unknown error'}`, status: response.status });
-        } else {
-          const data = await response.json();
-          setProfile(data);
-        }
+
+    if (!accessToken) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${import.meta.env.PUBLIC_API_BASE_URL}/api/users/me/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setProfile(response.data);
+    } catch (error) {
+      setError({
+        message: `Error fetching profile: ${error.response?.data?.detail || 'Unknown error'}`,
+        status: error.response?.status,
+      });
+    }
       } catch (error) {
         setError({ message: 'Error fetching profile', status: 500, error });
       } finally {
@@ -65,17 +70,13 @@ const Profile = () => {
         email: profile.email,
         is_active: profile.is_active,
       });
-      const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL}/api/users/me/`, {
-        method: 'PUT',
-        headers,
-        body,
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        setError({ message: `Error updating profile: ${errorData.detail || 'Unknown error'}`, status: response.status });
-      } else {
-        const updatedProfile = await response.json();
-        setProfile(updatedProfile);
+      try {
+        const response = await axios.put(`${import.meta.env.PUBLIC_API_BASE_URL}/api/users/me/`, body, {
+          headers,
+        });
+        setProfile(response.data);
+      } catch (error) {
+        setError({ message: `Error updating profile: ${error.response?.data?.detail || 'Unknown error'}`, status: error.response?.status || 500 });
       }
     } catch (error) {
       setError({ message: 'Error updating profile', status: 500, error });
