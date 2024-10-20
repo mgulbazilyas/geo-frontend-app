@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import Loader from './Loader';
-
+import { ROLES } from '../constants';
 const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -13,12 +14,11 @@ const Profile = () => {
       try {
         const accessToken = localStorage.getItem('accessToken');
         if (!accessToken) {
-          // Redirect to login if no token
           window.location.href = '/login';
           return;
         }
         const headers = { Authorization: `Bearer ${accessToken}` };
-        const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL}/api/profile/`, { headers });
+        const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL}/api/users/me/`, { headers });
         if (!response.ok) {
           const errorData = await response.json();
           setError({ message: `Error fetching profile: ${errorData.detail || 'Unknown error'}`, status: response.status });
@@ -35,6 +35,54 @@ const Profile = () => {
 
     fetchProfile();
   }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setProfile((prevProfile) => ({
+      ...prevProfile,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setError(null);
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) {
+        window.location.href = '/login';
+        return;
+      }
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      };
+      const body = JSON.stringify({
+        username: profile.username,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        email: profile.email,
+        is_active: profile.is_active,
+      });
+      const response = await fetch(`${import.meta.env.PUBLIC_API_BASE_URL}/api/users/me/`, {
+        method: 'PUT',
+        headers,
+        body,
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError({ message: `Error updating profile: ${errorData.detail || 'Unknown error'}`, status: response.status });
+      } else {
+        const updatedProfile = await response.json();
+        setProfile(updatedProfile);
+      }
+    } catch (error) {
+      setError({ message: 'Error updating profile', status: 500, error });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (loading) {
     return <Loader />;
@@ -62,13 +110,76 @@ const Profile = () => {
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       <h1 className="text-2xl font-bold mb-4">Profile</h1>
-      <div className="space-y-2">
-        <p><span className="font-bold">Username:</span> {profile.username}</p>
-        <p><span className="font-bold">Role:</span> {profile.role}</p>
-        <p><span className="font-bold">First Name:</span> {profile.first_name}</p>
-        <p><span className="font-bold">Last Name:</span> {profile.last_name}</p>
-        <p><span className="font-bold">Email:</span> {profile.email}</p>
-      </div>
+      <form onSubmit={handleSubmit} className="space-y-4 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <label className="block font-bold mb-1" htmlFor="username">Username:</label>
+          <input
+            type="text"
+            disabled
+            id="username"
+            name="username"
+            value={profile.username}
+            // onChange={handleInputChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        <div>
+          <label className="block font-bold mb-1" htmlFor="first_name">First Name:</label>
+          <input
+            type="text"
+            id="first_name"
+            name="first_name"
+            value={profile.first_name}
+            onChange={handleInputChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        <div>
+          <label className="block font-bold mb-1" htmlFor="last_name">Last Name:</label>
+          <input
+            type="text"
+            id="last_name"
+            name="last_name"
+            value={profile.last_name}
+            onChange={handleInputChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        <div>
+          <label className="block font-bold mb-1" htmlFor="email">Email:</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value={profile.email}
+            onChange={handleInputChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+        {/* <div>
+          <label className="block font-bold mb-1" htmlFor="is_active">Active Status:</label>
+          <input
+            type="checkbox"
+            id="is_active"
+            name="is_active"
+            checked={profile.is_active}
+            onChange={handleInputChange}
+            className="mr-2"
+          />
+          <span>{profile.is_active ? 'Active' : 'Inactive'}</span>
+        </div> */}
+        <div>
+          <label className="block font-bold mb-1">Role:</label>
+          <p>{ROLES[profile.role]}</p>
+        </div>
+        <button
+          type="submit"
+          className="bg-blue-500 text-white p-2 rounded"
+          disabled={isSaving}
+        >
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </form>
     </div>
   );
 };
