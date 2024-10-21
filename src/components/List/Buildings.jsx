@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import axios from '../myaxios.js';
-import Loader from './Loader';
-import Modal from './Modal'; // Assuming a Modal component is available
-import UserSelectionButton from './subcomponents/UserSelectionButton.jsx'; // New UserSelection component
+import React, { useState, useEffect, useRef } from 'react';
+import axios from '../../myaxios.js';
+import Loader from '../Loader.jsx';
+import Modal from '../subcomponents/Modal.jsx'; // Assuming a Modal component is available
+import UserSelectionButton from '../subcomponents/UserSelectionButton.jsx'; // New UserSelection component
 
 const Buildings = () => {
   const [buildings, setBuildings] = useState([]);
@@ -10,29 +10,43 @@ const Buildings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const selectedRef = useRef();
 
   useEffect(() => {
-    const fetchBuildings = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const accessToken = localStorage.getItem('accessToken');
-        const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-        const response = await axios.get(`${import.meta.env.PUBLIC_API_BASE_URL}/api/buildings/`, { headers });
-        if (response.status === 200) {
-          setBuildings(response.data.results);
-        } else {
-          setError({ message: 'Error fetching buildings', status: response.status });
-        }
-      } catch (error) {
-        setError({ message: 'Error fetching buildings', status: error.response?.status || 500, error });
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (selectedBuilding) {
+      selectedRef.value?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedBuilding]);
 
+  useEffect(() => {
     fetchBuildings();
-  }, []);
+  }, [page, searchQuery]);
+
+  const fetchBuildings = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+      const response = await axios.get(`${import.meta.env.PUBLIC_API_BASE_URL}/api/buildings/`, {
+        headers,
+        params: { page, search: searchQuery },
+      });
+      if (response.status === 200) {
+        setBuildings(response.data.results);
+        setTotalPages(Math.ceil(response.data.count / 10)); // Assuming 10 buildings per page
+      } else {
+        setError({ message: 'Error fetching buildings', status: response.status });
+      }
+    } catch (error) {
+      setError({ message: 'Error fetching buildings', status: error.response?.status || 500, error });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpdateBuilding = async () => {
     try {
@@ -44,12 +58,11 @@ const Buildings = () => {
         { headers }
       );
       if (response.status === 200) {
-        // Update the building in the state or refetch the buildings
         const updatedBuildings = buildings.map((building) =>
           building.id === selectedBuilding.id ? selectedBuilding : building
         );
         setBuildings(updatedBuildings);
-        setSelectedBuilding(null); // Close the details view
+        setSelectedBuilding(null);
       } else {
         setError({ message: 'Error updating building', status: response.status });
       }
@@ -62,6 +75,16 @@ const Buildings = () => {
     }
   };
 
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
+  };
 
   if (loading) {
     return (
@@ -84,6 +107,13 @@ const Buildings = () => {
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       <h1 className="text-2xl font-bold mb-4">Buildings</h1>
+      <input
+        type="text"
+        placeholder="Search buildings..."
+        value={searchQuery}
+        onChange={handleSearchChange}
+        className="block w-full p-4 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
       <table className="w-full mb-4">
         <thead>
           <tr className="bg-gray-100">
@@ -98,7 +128,6 @@ const Buildings = () => {
               <td className="py-2 px-4">{building.number}</td>
               <td className="py-2 px-4">
                 {building.ownerName}
-              
               </td>
               <td className="py-2 px-4">
                 <button
@@ -114,7 +143,7 @@ const Buildings = () => {
       </table>
 
       {selectedBuilding && (
-        <div className="mt-6 p-6 bg-gray-100 rounded-lg shadow-md">
+        <div className="mt-6 p-6 bg-gray-100 rounded-lg shadow-md" ref={(el) => (selectedRef.value = el)}>
           <h2 className="text-xl font-bold mb-4">Building Details</h2>
           <form className="space-y-4">
             <div>
@@ -131,8 +160,7 @@ const Buildings = () => {
               <UserSelectionButton label={selectedBuilding.ownerName} onSelect={(user) => {
                 selectedBuilding.owner = user.id;
                 setSelectedBuilding((previous_val) => ({...previous_val, owner: user.id, ownerName: user.first_name + ' ' + user.last_name}));
-              }}/>
-
+              }} />
             </div>
             <div>
               <label className="block font-semibold">Address</label>
@@ -153,40 +181,43 @@ const Buildings = () => {
               />
             </div>
           </form>
-          <div className="mt-4 flex space-x-4"> {/* Added flex container */}
-          <button
-            onClick={handleUpdateBuilding}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg"
-          >
-            Save Changes
-          </button>
-          <button
-            onClick={() => setSelectedBuilding(null)}
-            className="mt-0 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
-          >
-            Close Details
-          </button>
-
+          <div className="mt-4 flex space-x-4">
+            <button
+              onClick={handleUpdateBuilding}
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg"
+            >
+              Save Changes
+            </button>
+            <button
+              onClick={() => setSelectedBuilding(null)}
+              className="mt-0 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+            >
+              Close Details
+            </button>
           </div>
         </div>
       )}
 
-      {/* {showModal && (
-        <Modal onClose={() => setShowModal(false)}>
-          <UserSelection
-            onSelect={(owner) => {
-              setSelectedBuilding({ ...selectedBuilding, owner: owner.name });
-              setShowModal(false);
-            }}
-          />
-        </Modal>
-      )} */}
+      <div className="flex justify-center items-center mt-6 space-x-4">
+        <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className="px-4 py-2 bg-gray-300 rounded-md">
+          Previous
+        </button>
+        <input
+          type="number"
+          value={page}
+          onChange={(e) => handlePageChange(Number(e.target.value))}
+          min="1"
+          max={totalPages}
+          className="w-16 p-2 text-center border border-gray-300 rounded-md"
+        />
+        <span>of {totalPages}</span>
+
+        <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="px-4 py-2 bg-gray-300 rounded-md">
+          Next
+        </button>
+      </div>
     </div>
   );
 };
 
 export default Buildings;
-
-// UserSelection Component (in a separate file, e.g., UserSelection.js)
-// import React, { useState, useEffect } from 'react';
-// import axios from '../myaxios.js';

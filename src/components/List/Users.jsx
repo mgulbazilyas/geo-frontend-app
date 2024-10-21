@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import Loader from './Loader';
-import axios from '../myaxios';
+import React, { useState, useEffect, useRef } from 'react';
+import Loader from '../Loader';
+import axios from '../../myaxios';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -8,10 +8,14 @@ const Users = () => {
   const [error, setError] = useState(null);
   const [formUser, setFormUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const selectedRef = useRef();
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, searchQuery]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -23,12 +27,15 @@ const Users = () => {
         return;
       }
       const headers = { Authorization: `Bearer ${accessToken}` };
-      const response = await axios.get(`${import.meta.env.PUBLIC_API_BASE_URL}/api/users/`, { headers });
+      const response = await axios.get(`${import.meta.env.PUBLIC_API_BASE_URL}/api/users/`, {
+        headers,
+        params: { page, search: searchQuery },
+      });
       setUsers(response.data.results);
+      setTotalPages(Math.ceil(response.data.count / 10)); // Assuming 10 users per page
     } catch (error) {
       setError({ message: 'Error fetching users', status: error.response?.status || 500, error });
       console.error('Error fetching users:', error);
-
     } finally {
       setLoading(false);
     }
@@ -91,6 +98,23 @@ const Users = () => {
     }
   };
 
+  useEffect(() => {
+    if (formUser) {
+      selectedRef.value?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [formUser]);
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setPage(1); // Reset to first page when search changes
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
+  };
+
   if (loading) {
     return <Loader />;
   }
@@ -104,17 +128,25 @@ const Users = () => {
       </div>
     );
   }
+
   const RESIDENT = '20';
-const BUILDING_OWNER = '10';
-const ADMIN = '0';
+  const BUILDING_OWNER = '10';
+  const ADMIN = '0';
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       <h1 className="text-2xl font-bold mb-4">Users</h1>
       <button onClick={handleCreateUser} className="mb-4 bg-blue-500 text-white px-4 py-2 rounded-md">Create User</button>
+      <input
+        type="text"
+        placeholder="Search users..."
+        value={searchQuery}
+        onChange={handleSearchChange}
+        className="block w-full p-4 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
 
       {formUser && (
-        <div className="mb-8 p-6 bg-white shadow-lg rounded-lg">
+        <div className="mb-8 p-6 bg-white shadow-lg rounded-lg" ref={(el) => (selectedRef.value = el)}>
           <h2 className="text-2xl font-bold mb-6 text-gray-800">
             {isEditing ? 'Edit User' : 'Create User'}
           </h2>
@@ -169,7 +201,6 @@ const ADMIN = '0';
         </div>
       )}
 
-
       <table className="min-w-full bg-white">
         <thead>
           <tr>
@@ -194,13 +225,32 @@ const ADMIN = '0';
                   Edit
                 </button>
                 <button onClick={() => handleBlockUnblockUser(user)} className={`px-2 py-1 rounded-md ${user.is_active ? 'bg-green-500' : 'bg-red-500'} text-white`}>
-                  {user.is_active ? 'block' : 'UnBlock'}
+                  {user.is_active ? 'Block' : 'Unblock'}
                 </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      <div className="flex justify-center items-center mt-6 space-x-4">
+        <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className="px-4 py-2 bg-gray-300 rounded-md">
+          Previous
+        </button>
+        <input
+          type="number"
+          value={page}
+          onChange={(e) => handlePageChange(Number(e.target.value))}
+          min="1"
+          max={totalPages}
+          className="w-16 p-2 text-center border border-gray-300 rounded-md"
+        />
+        <span>of {totalPages}</span>
+
+        <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="px-4 py-2 bg-gray-300 rounded-md">
+          Next
+        </button>
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import Loader from './Loader';
-import UserSelectionButton from './subcomponents/UserSelectionButton.jsx';
-import axios from '../myaxios.js';
+import Loader from '../Loader.jsx';
+import UserSelectionButton from '../subcomponents/UserSelectionButton.jsx';
+import axios from '../../myaxios.js';
 
 const Readings = () => {
   const [readings, setReadings] = useState([]);
@@ -156,6 +156,8 @@ const Readings = () => {
           min="1"
           max={Math.ceil(count / 10)}
         />
+        <span>of {totalPages}</span>
+        
         <button
           onClick={() => handlePageChange(page + 1)}
           disabled={page === Math.ceil(count / 10)}

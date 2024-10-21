@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import axios from '../myaxios.js';
-import Loader from './Loader';
-import UserSelectionButton from './subcomponents/UserSelectionButton.jsx';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from '../../myaxios.js';
+import Loader from '../Loader.jsx';
+import UserSelectionButton from '../subcomponents/UserSelectionButton.jsx';
 
 const Houses = () => {
   const [houses, setHouses] = useState([]);
@@ -13,6 +13,9 @@ const Houses = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Refs for each house
+  const rowRefs = useRef([]);
+  const selectedHouseRef = useRef(null);
   useEffect(() => {
     const fetchHouses = async () => {
       setAjaxLoading(true);
@@ -98,6 +101,23 @@ const Houses = () => {
     }
   };
 
+  useEffect(() => {
+    rowRefs.current = Array(houses.length).fill(null); // Reset refs for the updated list
+  }, [houses]);
+
+  const scrollToSelectedHouse = () => {
+    if (selectedHouse) {
+      const index = houses.findIndex((house) => house.id === selectedHouse.id);
+      if (index !== -1) {
+        selectedHouseRef.value?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
+  useEffect(() => {
+    scrollToSelectedHouse();
+  }, [selectedHouse]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center w-full h-full">
@@ -144,8 +164,14 @@ const Houses = () => {
           </tr>
         </thead>
         <tbody>
-          {houses.map((house) => (
-            <tr key={house.id} className="border-b hover:bg-gray-50">
+          {houses.map((house, index) => (
+            <tr
+              key={house.id}
+              ref={(el) => (rowRefs.current[index] = el)}
+              className={`border-b hover:bg-gray-50 ${
+                selectedHouse?.id === house.id ? 'bg-gray-200' : ''
+              }`}
+            >
               <td className="py-2 px-4">{house.number}</td>
               <td className="py-2 px-4">
                 {house.residentName}
@@ -190,7 +216,7 @@ const Houses = () => {
       </div>
 
       {selectedHouse && (
-        <div className="mt-6 p-6 bg-gray-100 rounded-lg shadow-md">
+        <div className="mt-6 p-6 bg-gray-100 rounded-lg shadow-md" ref={(el) => (selectedHouseRef.value = el)}>
           <h2 className="text-xl font-bold mb-4">House Details</h2>
           <form className="space-y-4">
             {/* ... other form fields */}
